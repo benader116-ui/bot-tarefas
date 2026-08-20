@@ -1,10 +1,5 @@
-import threading, asyncio
-from main import flask_app, init_db, start_bot
-
-def run_bot():
-    asyncio.run(start_bot())
+from main import flask_app, init_db, set_webhook
 
 init_db()
-threading.Thread(target=run_bot, daemon=True).start()
-
+set_webhook()
 app = flask_app
