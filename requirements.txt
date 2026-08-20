@@ -1,5 +1,5 @@
-python-telegram-bot
 faster-whisper
 dateparser
 flask
 gunicorn
+requests
