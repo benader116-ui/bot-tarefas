@@ -237,16 +237,24 @@ def delete(task_id):
     return redirect("/tasks")
 
 # ─── Inicialização ────────────────────────────────────────────────
-def run_flask():
-    flask_app.run(host="0.0.0.0", port=PORT)
+import asyncio
+
+async def start_bot():
+    bot_app = Application.builder().token(TELEGRAM_TOKEN).build()
+    bot_app.add_handler(MessageHandler(filters.VOICE, handle_voice))
+    bot_app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
+    await bot_app.initialize()
+    await bot_app.start()
+    await bot_app.updater.start_polling(drop_pending_updates=True)
+    await asyncio.Event().wait()
+
+def run_bot():
+    asyncio.run(start_bot())
 
 if __name__ == "__main__":
     init_db()
 
-    flask_thread = threading.Thread(target=run_flask, daemon=True)
-    flask_thread.start()
+    bot_thread = threading.Thread(target=run_bot, daemon=True)
+    bot_thread.start()
 
-    bot_app = Application.builder().token(TELEGRAM_TOKEN).build()
-    bot_app.add_handler(MessageHandler(filters.VOICE, handle_voice))
-    bot_app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
-    bot_app.run_polling(drop_pending_updates=True)
+    flask_app.run(host="0.0.0.0", port=PORT)
