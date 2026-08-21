@@ -1,4 +1,4 @@
-import logging, os, sqlite3, datetime, tempfile
+import logging, os, sqlite3, datetime, tempfile, threading
 import requests as http
 from faster_whisper import WhisperModel
 import dateparser.search
@@ -62,13 +62,11 @@ def set_webhook():
 flask_app = Flask(__name__)
 flask_app.secret_key = SECRET_KEY
 
-@flask_app.route("/webhook", methods=["POST"])
-def webhook():
-    data = request.get_json(force=True)
+def process_update(data):
     message = data.get("message", {})
     chat_id = message.get("chat", {}).get("id")
     if not chat_id:
-        return "ok", 200
+        return
     voice = message.get("voice")
     if voice:
         send_message(chat_id, "🎙️ Recebi! Transcrevendo...")
@@ -83,7 +81,7 @@ def webhook():
             os.unlink(tmp_path)
         if not transcription:
             send_message(chat_id, "❌ Não consegui entender. Tente novamente.")
-            return "ok", 200
+            return
         due_date = None
         hits = dateparser.search.search_dates(transcription, languages=["pt"])
         if hits:
@@ -95,6 +93,11 @@ def webhook():
         send_message(chat_id, reply)
     else:
         send_message(chat_id, "Olá! 👋\nMande um *áudio* com sua tarefa.")
+
+@flask_app.route("/webhook", methods=["POST"])
+def webhook():
+    data = request.get_json(force=True)
+    threading.Thread(target=process_update, args=(data,), daemon=True).start()
     return "ok", 200
 
 LOGIN_HTML = """<!DOCTYPE html>
